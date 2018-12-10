@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: webhook-test
+  labels:
+    app: webhook-test
+    kubedroid.io/launcher: enabled
+spec:
+  containers:
+  - name: default
+    image: ubuntu:bionic
+    command: ['sh', '-c', 'echo Hello Kubernetes!']
