@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: android-x86-admission-webhook
+  name: android-x86-injector
   labels:
-    app: android-x86-admission-webhook
+    app: android-x86-injector
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: android-x86-admission-webhook
+      app: android-x86-injector
   template:
     metadata:
       labels:
-        app: android-x86-admission-webhook
+        app: android-x86-injector
     spec:
       containers:
         - name: webhook
-          image: quay.io/quamotion/android-x86-admission-webhook:v0.1
+          image: quay.io/quamotion/android-x86-injector:v0.1
           args:
             - -tlsCertFile=/etc/webhook/certs/cert.pem
             - -tlsKeyFile=/etc/webhook/certs/key.pem
@@ -27,27 +27,27 @@ spec:
       volumes:
         - name: webhook-certs
           secret:
-            secretName: android-x86-admission-webhook
+            secretName: android-x86-injector
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: android-x86-admission-webhook
+  name: android-x86-injector
   labels:
-    app: android-x86-admission-webhook
+    app: android-x86-injector
 spec:
   ports:
   - port: 443
     targetPort: 443
   selector:
-    app: android-x86-admission-webhook
+    app: android-x86-injector
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
-kind: ValidatingWebhookConfiguration
+kind: MutatingWebhookConfiguration
 metadata:
-  name: android-x86-admission-webhook
+  name: android-x86-injector
   labels:
-    app: android-x86-admission-webhook
+    app: android-x86-injector
 webhooks:
   - name: admission-webhook.kubedroid.io
     rules:
@@ -62,3 +62,6 @@ webhooks:
         namespace: default
         path: "/mutate"
       caBundle: ${CA_BUNDLE}
+    namespaceSelector:
+      matchLabels:
+      - android-x86-injection: enabled
