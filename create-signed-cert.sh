@@ -41,8 +41,8 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-[ -z ${service} ] && service=android-x86-admission-webhook
-[ -z ${secret} ] && secret=android-x86-admission-webhook
+[ -z ${service} ] && service=android-x86-injector
+[ -z ${secret} ] && secret=android-x86-injector
 [ -z ${namespace} ] && namespace=default
 
 if [ ! -x "$(command -v openssl)" ]; then

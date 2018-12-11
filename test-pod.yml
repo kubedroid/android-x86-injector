@@ -4,9 +4,13 @@ metadata:
   name: webhook-test
   labels:
     app: webhook-test
-    kubedroid.io/launcher: enabled
+    kubevirt.io/flavor: android
+    kubevirt.io: virt-launcher
 spec:
   containers:
   - name: default
     image: ubuntu:bionic
-    command: ['sh', '-c', 'echo Hello Kubernetes!']
+    command: ['/bin/sh', '-c', 'echo Hello Kubernetes!']
+  - name: compute
+    image: ubuntu:bionic
+    command: ['/bin/sh', '-c', 'echo Hello Kubernetes!']

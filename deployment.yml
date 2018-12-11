@@ -58,10 +58,7 @@ webhooks:
     failurePolicy: Fail
     clientConfig:
       service:
-        name: android-x86-admission-webhook
+        name: android-x86-injector
         namespace: default
         path: "/mutate"
       caBundle: ${CA_BUNDLE}
-    namespaceSelector:
-      matchLabels:
-      - android-x86-injection: enabled

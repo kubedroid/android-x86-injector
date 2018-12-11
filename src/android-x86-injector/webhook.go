@@ -33,7 +33,10 @@ var (
 )
 
 const (
-	admissionWebhookAnnotationMutateKey   = "kubedroid.io/launcher"
+	kubevirtFlavorKey = "kubevirt.io/flavor"
+	kubevirtKey = "kubevirt.io"
+	virtLauncherValue = "virt-launcher"
+	androidFlavorValue = "android"
 )
 
 type WebhookServer struct {
@@ -70,14 +73,29 @@ func mutationRequired(ignoredList []string, metadata *metav1.ObjectMeta) bool {
 		}
 	}
 
-	annotations := metadata.GetAnnotations()
-	if annotations == nil {
-		log.Printf("Skip mutation for %v because it doesn't have any annotations", metadata.Name)
+	labels := metadata.GetLabels()
+	if labels == nil {
+		log.Printf("Skip mutation for %v because it doesn't have any labels", metadata.Name)
 		return false
 	}
 
-	if _, hasAnnotation := annotations[admissionWebhookAnnotationMutateKey]; !hasAnnotation {
-		log.Printf("Skip mutation for %v because it doesn't have the '%v' annotation", metadata.Name, admissionWebhookAnnotationMutateKey)
+	if flavor, hasLabel := labels[kubevirtFlavorKey]; hasLabel {
+		if flavor != androidFlavorValue {
+			log.Printf("Skip mutation for %v because it has the flavor '%v' label instead of the expected flavor '%v'", metadata.Name, flavor, androidFlavorValue)
+			return false
+		}
+	} else {
+		log.Printf("Skip mutation for %v because it doesn't have the '%v' label", metadata.Name, kubevirtFlavorKey)
+		return false
+	}
+
+	if flavor, hasLabel := labels[kubevirtKey]; hasLabel {
+		if flavor != virtLauncherValue {
+			log.Printf("Skip mutation for %v because it has the flavor '%v' label instead of the expected value '%v'", metadata.Name, flavor, virtLauncherValue)
+			return false
+		}
+	} else {
+		log.Printf("Skip mutation for %v because it doesn't have the '%v' label", metadata.Name, kubevirtKey)
 		return false
 	}
 
@@ -88,26 +106,27 @@ func mutationRequired(ignoredList []string, metadata *metav1.ObjectMeta) bool {
 func patchPod(pod corev1.Pod) ([]byte, error) {
 	var patch []patchOperation
 
-	/*
-	for key, value := range added {
-		if target == nil || target[key] == "" {
-			target = map[string]string{}
-			patch = append(patch, patchOperation{
-				Op:   "add",
-				Path: "/metadata/annotations",
-				Value: map[string]string{
-					key: value,
-				},
-			})
-		} else {
-			patch = append(patch, patchOperation{
-				Op:    "replace",
-				Path:  "/metadata/annotations/" + key,
-				Value: value,
-			})
+	computeIndex := -1
+
+	for i := 0; i < len(pod.Spec.Containers); i++ {
+		container := pod.Spec.Containers[i]
+
+		log.Printf("Found a '%v' container", container.Name)
+
+		if container.Name == "compute" {
+			computeIndex = i
 		}
 	}
-	*/
+
+	if computeIndex == -1 {
+		log.Printf("Couldn't find a compute container on the pod")
+	} else {
+		patch = append(patch, patchOperation {
+			Op: "replace",
+			Path: fmt.Sprintf("/spec/containers/%v/image", computeIndex),
+			Value: "quay.io/quamotion/android-x86-launcher:latest",
+		})
+	}
 
 	return json.Marshal(patch)
 }
@@ -118,6 +137,8 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 
 	log.Printf("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
 		req.Kind, req.Namespace, req.Name, req.UID, req.Operation, req.UserInfo)
+
+	log.Printf("Object json: %v", string(req.Object.Raw))
 
 	var pod corev1.Pod
 	if err := json.Unmarshal(req.Object.Raw, &pod); err != nil {
